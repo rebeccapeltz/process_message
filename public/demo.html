@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic AI: Natural Language Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f0e8;
+    --surface: #fdfaf4;
+    --surface2: #efe9da;
+    --border: #d4c9b0;
+    --ink: #2c2416;
+    --ink-muted: #7a6e5a;
+    --accent: #8b5e3c;
+    --accent2: #4a7c59;
+    --accent3: #5c7a8b;
+    --highlight: #e8dcc8;
+    --code-bg: #2c2416;
+    --code-fg: #e8dcc8;
+    --red: #c0392b;
+    --yellow: #d4a017;
+    --step-pending: #d4c9b0;
+    --step-active: #d4a017;
+    --step-done: #4a7c59;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; font-size: 15px; line-height: 1.6; }
+
+  header { background: var(--ink); color: var(--bg); padding: 24px 40px 20px; }
+  header h1 { font-family: 'DM Serif Display', serif; font-size: 1.8rem; line-height: 1.1; }
+  header h1 em { font-style: italic; color: #c4a97a; }
+  header .subtitle { color: #a89880; font-size: 0.82rem; margin-top: 4px; font-weight: 300; letter-spacing: 0.5px; }
+  .lesson-tag { display: inline-block; margin-top: 8px; background: var(--accent); color: #fff; font-size: 0.68rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 10px; border-radius: 2px; }
+
+  .layout { display: grid; grid-template-columns: 380px 1fr; min-height: calc(100vh - 110px); }
+
+  /* ---- LEFT PANEL ---- */
+  .left-panel { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .section { padding: 18px 22px; border-bottom: 1px solid var(--border); }
+  .section-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .section-label .num { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.62rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  .api-key-row { display: flex; gap: 8px; align-items: stretch; }
+  .api-key-row input { flex: 1; font-family: 'DM Mono', monospace; font-size: 0.78rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; color: var(--ink); }
+  .api-key-row input:focus { outline: none; border-color: var(--accent); }
+  .toggle-vis { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 0 10px; cursor: pointer; font-size: 0.75rem; color: var(--ink-muted); transition: all 0.2s; }
+  .toggle-vis:hover { background: var(--highlight); }
+
+  .data-url-field { width: 100%; font-family: 'DM Mono', monospace; font-size: 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; color: var(--ink); }
+  .data-url-field:focus { outline: none; border-color: var(--accent); }
+  .help-text { font-size: 0.72rem; color: var(--ink-muted); margin-top: 5px; line-height: 1.4; }
+
+  .query-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .suggestion-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 4px 12px; font-size: 0.72rem; color: var(--ink-muted); cursor: pointer; transition: all 0.2s; }
+  .suggestion-chip:hover { background: var(--highlight); color: var(--accent); border-color: var(--accent); }
+
+  .query-input { width: 100%; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; color: var(--ink); resize: none; min-height: 70px; line-height: 1.5; }
+  .query-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+
+  .run-btn { margin-top: 12px; width: 100%; background: var(--accent); color: #fff; border: none; padding: 12px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+  .run-btn:hover:not(:disabled) { background: #7a4f32; transform: translateY(-1px); }
+  .run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- AGENT STEPS ---- */
+  .steps-area { flex: 1; padding: 18px 22px; overflow-y: auto; }
+  .steps-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 14px; }
+  .step { display: flex; gap: 12px; margin-bottom: 14px; opacity: 0.35; transition: opacity 0.3s; }
+  .step.active, .step.done { opacity: 1; }
+  .step-icon { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--step-pending); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--step-pending); flex-shrink: 0; transition: all 0.3s; }
+  .step.active .step-icon { border-color: var(--step-active); color: var(--step-active); animation: pulse 1s ease-in-out infinite; }
+  .step.done .step-icon { border-color: var(--step-done); color: #fff; background: var(--step-done); }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(212,160,23,0.4); } 50% { box-shadow: 0 0 0 6px rgba(212,160,23,0); } }
+  .step-body { flex: 1; }
+  .step-name { font-size: 0.8rem; font-weight: 600; margin-bottom: 2px; }
+  .step-detail { font-size: 0.72rem; color: var(--ink-muted); font-family: 'DM Mono', monospace; line-height: 1.4; white-space: pre-wrap; }
+  .step.active .step-name { color: var(--step-active); }
+  .step.done .step-name { color: var(--step-done); }
+  .step-connector { width: 2px; height: 12px; background: var(--border); margin: 2px 0 2px 13px; }
+
+  /* ---- RIGHT PANEL ---- */
+  .right-panel { background: var(--surface); display: flex; flex-direction: column; }
+  .right-header { padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: space-between; }
+  .right-header h2 { font-family: 'DM Serif Display', serif; font-size: 1rem; font-weight: 400; }
+  .tab-bar { display: flex; gap: 0; }
+  .tab { padding: 6px 14px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover { color: var(--accent); }
+
+  .panel-body { flex: 1; overflow: auto; }
+  .tab-pane { display: none; height: 100%; }
+  .tab-pane.active { display: flex; flex-direction: column; }
+
+  /* Chart tab */
+  .chart-area { flex: 1; padding: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .chart-placeholder { text-align: center; color: var(--ink-muted); }
+  .chart-placeholder .big-icon { font-size: 3rem; opacity: 0.3; margin-bottom: 12px; }
+  .chart-placeholder p { font-size: 0.85rem; max-width: 260px; line-height: 1.5; }
+  #chart-container { width: 100%; max-width: 680px; }
+  .chart-title { font-family: 'DM Serif Display', serif; font-size: 1.1rem; text-align: center; margin-bottom: 18px; color: var(--ink); }
+
+  /* Data tab */
+  .data-area { padding: 20px 24px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; font-family: 'DM Mono', monospace; }
+  .data-table th { background: var(--surface2); text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--border); font-size: 0.7rem; letter-spacing: 0.8px; text-transform: uppercase; color: var(--ink-muted); font-weight: 600; }
+  .data-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); color: var(--ink); }
+  .data-table tr:hover td { background: var(--highlight); }
+  .no-data { padding: 40px; text-align: center; color: var(--ink-muted); font-size: 0.85rem; }
+
+  /* JSON tab */
+  .json-area { background: var(--code-bg); flex: 1; padding: 20px 24px; overflow: auto; }
+  .json-display { font-family: 'DM Mono', monospace; font-size: 0.74rem; color: var(--code-fg); line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .json-key { color: #c4a97a; }
+  .json-str { color: #a8c5a0; }
+  .json-num { color: #88b4c8; }
+  .json-bool { color: #e8a87c; }
+  .json-null { color: #a89880; }
+
+  /* Concepts tab */
+  .concepts-area { padding: 20px 24px; }
+  .concept-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
+  .concept-card-header { background: var(--surface2); padding: 10px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+  .concept-card-header:hover { background: var(--highlight); }
+  .concept-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.65rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .concept-card-title { font-weight: 600; font-size: 0.82rem; flex: 1; }
+  .concept-card-body { padding: 12px 16px; font-size: 0.8rem; line-height: 1.6; display: none; background: var(--surface); }
+  .concept-card.open .concept-card-body { display: block; }
+  .concept-card-body code { font-family: 'DM Mono', monospace; background: var(--surface2); padding: 1px 5px; border-radius: 3px; font-size: 0.76rem; }
+  .callout { margin-top: 10px; background: var(--highlight); border-left: 3px solid var(--accent); padding: 8px 12px; font-size: 0.78rem; border-radius: 0 4px 4px 0; color: var(--ink-muted); }
+
+  .error-box { margin: 20px; background: #fdf0ee; border: 1px solid #e8c5c0; border-radius: 6px; padding: 14px 18px; color: var(--red); font-size: 0.85rem; }
+
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+    .left-panel { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Agentic AI: <em>Natural Language Dashboard</em></h1>
+  <p class="subtitle">Ask for a chart in plain English — watch the agent decide, fetch, and render</p>
+  <div class="lesson-tag">AI Literacy · Tool Use · Agentic Loop</div>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <div class="section" style="background:var(--highlight); border-left: 3px solid var(--accent2);">
+      <div class="section-label" style="color:var(--accent2)">🔒 API Key</div>
+      <p class="help-text">API key is stored securely in <code>.env</code> on the server — not in the browser.</p>
+    </div>
+
+    <div class="section">
+      <div class="section-label"><span class="num">2</span> Data Source (URL)</div>
+      <input class="data-url-field" type="text" id="data-url"
+        value="https://raw.githubusercontent.com/beckypeltz/sample-data/main/sales.json"
+        placeholder="https://your-server.com/data.json">
+      <p class="help-text">A public JSON or CSV endpoint. The agent will fetch this when it needs data.<br>
+      <strong>Demo fallback:</strong> If unreachable, built-in sample data is used.</p>
+    </div>
+
+    <div class="section">
+      <div class="section-label"><span class="num">3</span> Ask a Question</div>
+      <div class="query-suggestions">
+        <span class="suggestion-chip" onclick="setSuggestion(this)">revenue last 6 months bar chart</span>
+        <span class="suggestion-chip" onclick="setSuggestion(this)">show units sold as line chart</span>
+        <span class="suggestion-chip" onclick="setSuggestion(this)">expenses pie chart</span>
+        <span class="suggestion-chip" onclick="setSuggestion(this)">compare revenue vs expenses</span>
+      </div>
+      <textarea class="query-input" id="user-query" placeholder="e.g. Show me revenue for the last 6 months as a bar chart"></textarea>
+      <button class="run-btn" id="run-btn" onclick="runAgent()">
+        <span id="btn-label">▶ Run Agent</span>
+      </button>
+    </div>
+
+    <!-- AGENT STEPS -->
+    <div class="steps-area">
+      <div class="steps-title">Agent Steps</div>
+      <div id="step-1" class="step">
+        <div class="step-icon">1</div>
+        <div class="step-body">
+          <div class="step-name">Understand Intent</div>
+          <div class="step-detail" id="step-1-detail">Claude reads your query and decides which tool(s) to call</div>
+        </div>
+      </div>
+      <div class="step-connector"></div>
+      <div id="step-2" class="step">
+        <div class="step-icon">2</div>
+        <div class="step-body">
+          <div class="step-name">Fetch Data</div>
+          <div class="step-detail" id="step-2-detail">Agent calls get_data() → your server returns JSON</div>
+        </div>
+      </div>
+      <div class="step-connector"></div>
+      <div id="step-3" class="step">
+        <div class="step-icon">3</div>
+        <div class="step-body">
+          <div class="step-name">Decide Chart Type</div>
+          <div class="step-detail" id="step-3-detail">Claude selects chart type and maps fields from the data</div>
+        </div>
+      </div>
+      <div class="step-connector"></div>
+      <div id="step-4" class="step">
+        <div class="step-icon">4</div>
+        <div class="step-body">
+          <div class="step-name">Render Chart</div>
+          <div class="step-detail" id="step-4-detail">Your code draws the chart with Chart.js</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /left-panel -->
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="right-header">
+      <h2>Dashboard Output</h2>
+      <div class="tab-bar">
+        <div class="tab active" onclick="switchTab('chart', this)">Chart</div>
+        <div class="tab" onclick="switchTab('data', this)">Raw Data</div>
+        <div class="tab" onclick="switchTab('toolcall', this)">Tool Call JSON</div>
+        <div class="tab" onclick="switchTab('concepts', this)">How It Works</div>
+      </div>
+    </div>
+    <div class="panel-body">
+
+      <div id="tab-chart" class="tab-pane active">
+        <div class="chart-area">
+          <div id="chart-placeholder" class="chart-placeholder">
+            <div class="big-icon">📊</div>
+            <p>Ask a question on the left and the agent will fetch data and render your chart here.</p>
+          </div>
+          <div id="chart-container" style="display:none">
+            <div class="chart-title" id="chart-title"></div>
+            <canvas id="myChart"></canvas>
+          </div>
+          <div id="chart-error" style="display:none"></div>
+        </div>
+      </div>
+
+      <div id="tab-data" class="tab-pane">
+        <div class="data-area">
+          <div id="data-table-container"><div class="no-data">No data fetched yet. Run a query first.</div></div>
+        </div>
+      </div>
+
+      <div id="tab-toolcall" class="tab-pane">
+        <div class="json-area">
+          <div class="json-display" id="json-display">// Tool call JSON will appear here after you run a query</div>
+        </div>
+      </div>
+
+      <div id="tab-concepts" class="tab-pane">
+        <div class="concepts-area">
+
+          <div class="concept-card open">
+            <div class="concept-card-header" onclick="this.parentElement.classList.toggle('open')">
+              <div class="concept-num">1</div>
+              <div class="concept-card-title">What makes this "agentic"?</div>
+              <span>▾</span>
+            </div>
+            <div class="concept-card-body">
+              A regular API call asks Claude a question and gets back text. An <strong>agentic</strong> loop is different: Claude is given <strong>tools</strong> (functions it can call), and it decides — based on your natural language — which tools to use, in what order, with what parameters.
+              <div class="callout">The AI orchestrates; your code does the work. Claude never directly touches your database or draws the chart — it just decides <em>what</em> to call.</div>
+            </div>
+          </div>
+
+          <div class="concept-card">
+            <div class="concept-card-header" onclick="this.parentElement.classList.toggle('open')">
+              <div class="concept-num">2</div>
+              <div class="concept-card-title">How tool use (function calling) works</div>
+              <span>▾</span>
+            </div>
+            <div class="concept-card-body">
+              You define tools in your API request as JSON schemas. For example:<br><br>
+              <code>get_data(metric, period)</code> — fetches a dataset<br>
+              <code>render_chart(type, labels, values, title)</code> — specifies a chart<br><br>
+              Claude reads your message and the tool definitions, then responds with a <code>tool_use</code> block instead of plain text — telling your code exactly which function to call and what parameters to pass. Your code executes it, sends the result back, and Claude continues reasoning.
+              <div class="callout">This is the key difference from the simple demo: Claude is no longer just answering — it's <em>deciding</em>.</div>
+            </div>
+          </div>
+
+          <div class="concept-card">
+            <div class="concept-card-header" onclick="this.parentElement.classList.toggle('open')">
+              <div class="concept-num">3</div>
+              <div class="concept-card-title">Why this answers the classroom objection</div>
+              <span>▾</span>
+            </div>
+            <div class="concept-card-body">
+              The student's question was smart: "Why would I want AI responsible for fetching data AND creating the chart?" The answer: <strong>you don't</strong>. The agent pattern separates concerns clearly:<br><br>
+              • <strong>AI's job</strong>: understand intent, pick tools, pick parameters<br>
+              • <strong>Your code's job</strong>: fetch data reliably, render charts correctly<br><br>
+              Claude is the <em>decision-maker</em>, not the executor. You maintain full control over what your code actually does.
+            </div>
+          </div>
+
+          <div class="concept-card">
+            <div class="concept-card-header" onclick="this.parentElement.classList.toggle('open')">
+              <div class="concept-num">4</div>
+              <div class="concept-card-title">The two-call pattern in this demo</div>
+              <span>▾</span>
+            </div>
+            <div class="concept-card-body">
+              <strong>Call 1 — Intent + Tool Selection:</strong> Send user query + tool definitions. Claude responds with a <code>tool_use</code> block: which tool to call, with what params. This is where keyword extraction happens — Claude maps "revenue" → <code>metric="revenue"</code>, "bar chart" → <code>chart_type="bar"</code>.<br><br>
+              <strong>Call 2 — Render Decision:</strong> After fetching real data, send it back to Claude and ask it to specify the chart mapping. Claude returns structured JSON your Chart.js code can use directly.
+              <div class="callout">In production agents, this loop can have many more steps — Claude keeps calling tools until it has everything it needs.</div>
+            </div>
+          </div>
+
+          <div class="concept-card">
+            <div class="concept-card-header" onclick="this.parentElement.classList.toggle('open')">
+              <div class="concept-num">5</div>
+              <div class="concept-card-title">Using your own data endpoint</div>
+              <span>▾</span>
+            </div>
+            <div class="concept-card-body">
+              Replace the URL in Step 2 with any public JSON endpoint. The agent works best when your JSON has consistent field names (e.g., <code>month</code>, <code>revenue</code>, <code>units</code>). CSV endpoints also work — the demo converts them automatically.<br><br>
+              Example structure:<br>
+              <code>[{"month":"Jan","revenue":42000,"units":310}, ...]</code>
+              <div class="callout">Claude reads the field names from your actual data to decide how to map them to chart axes — no hardcoding required.</div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /concepts tab -->
+
+    </div><!-- /panel-body -->
+  </div><!-- /right-panel -->
+
+</div><!-- /layout -->
+
+<script>
+const API_BASE_URL = (window.location.hostname === 'localhost') 
+    ? 'http://localhost:3000' 
+    : 'https://process-message.vercel.app';
+
+// console.log('Running on:', API_BASE_URL);
+
+// ─────────────────────────────────────────────────
+// BUILT-IN SAMPLE DATA (fallback if URL unreachable)
+// ─────────────────────────────────────────────────
+const SAMPLE_DATA = [
+  { month: "Oct", revenue: 38400, expenses: 29100, units: 284 },
+  { month: "Nov", revenue: 41200, expenses: 31400, units: 306 },
+  { month: "Dec", revenue: 52800, expenses: 38200, units: 391 },
+  { month: "Jan", revenue: 35100, expenses: 27800, units: 260 },
+  { month: "Feb", revenue: 39600, expenses: 30100, units: 294 },
+  { month: "Mar", revenue: 47300, expenses: 33500, units: 351 }
+];
+
+// ─────────────────────────────────────────────────
+// TOOL DEFINITIONS — what we give Claude
+// ─────────────────────────────────────────────────
+const TOOLS = [
+  {
+    name: "get_data",
+    description: "Fetch business data from the data source. Use this when the user asks about metrics like revenue, expenses, units sold, or sales. Always call this before rendering a chart.",
+    input_schema: {
+      type: "object",
+      properties: {
+        metric: {
+          type: "string",
+          description: "The metric to retrieve. One of: revenue, expenses, units, all",
+          enum: ["revenue", "expenses", "units", "all"]
+        },
+        period: {
+          type: "string",
+          description: "Time period requested, e.g. 'last 6 months', 'all', 'recent'"
+        }
+      },
+      required: ["metric", "period"]
+    }
+  },
+  {
+    name: "render_chart",
+    description: "Render a chart from data. Call this after get_data returns results. Specify chart type and which fields to use for labels and values.",
+    input_schema: {
+      type: "object",
+      properties: {
+        chart_type: {
+          type: "string",
+          description: "Type of chart",
+          enum: ["bar", "line", "pie", "doughnut"]
+        },
+        label_field: {
+          type: "string",
+          description: "The data field to use as X-axis labels (e.g. 'month')"
+        },
+        value_fields: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of data fields to plot as series (e.g. ['revenue'] or ['revenue','expenses'])"
+        },
+        title: {
+          type: "string",
+          description: "Chart title to display"
+        }
+      },
+      required: ["chart_type", "label_field", "value_fields", "title"]
+    }
+  }
+];
+
+// ─────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────
+let currentChart = null;
+let lastFetchedData = null;
+let lastToolCallLog = {};
+
+// ─────────────────────────────────────────────────
+// UI HELPERS
+// ─────────────────────────────────────────────────
+function toggleKey() {
+  const inp = document.getElementById('api-key');
+  const btn = event.target;
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'hide'; }
+  else { inp.type = 'password'; btn.textContent = 'show'; }
+}
+
+function setSuggestion(el) {
+  document.getElementById('user-query').value = el.textContent.trim();
+}
+
+function setStep(n, state, detail) {
+  const el = document.getElementById('step-' + n);
+  el.className = 'step ' + state;
+  if (detail) document.getElementById('step-' + n + '-detail').textContent = detail;
+  if (state === 'done') {
+    const icon = el.querySelector('.step-icon');
+    icon.textContent = '✓';
+  }
+}
+
+function resetSteps() {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step-' + i);
+    el.className = 'step';
+    const icon = el.querySelector('.step-icon');
+    icon.textContent = i;
+  }
+  document.getElementById('step-1-detail').textContent = "Claude reads your query and decides which tool(s) to call";
+  document.getElementById('step-2-detail').textContent = "Agent calls get_data() → your server returns JSON";
+  document.getElementById('step-3-detail').textContent = "Claude selects chart type and maps fields from the data";
+  document.getElementById('step-4-detail').textContent = "Your code draws the chart with Chart.js";
+}
+
+function showChartError(msg) {
+  document.getElementById('chart-placeholder').style.display = 'none';
+  document.getElementById('chart-container').style.display = 'none';
+  const errEl = document.getElementById('chart-error');
+  errEl.style.display = 'block';
+  errEl.innerHTML = `<div class="error-box">⚠️ ${escapeHtml(msg)}</div>`;
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+function escapeHtml(t) {
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function syntaxHighlight(json) {
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+    let cls = 'json-num';
+    if (/^"/.test(match)) { cls = /:$/.test(match) ? 'json-key' : 'json-str'; }
+    else if (/true|false/.test(match)) { cls = 'json-bool'; }
+    else if (/null/.test(match)) { cls = 'json-null'; }
+    return `<span class="${cls}">${match}</span>`;
+  });
+}
+
+function renderDataTable(data) {
+  if (!data || !data.length) {
+    document.getElementById('data-table-container').innerHTML = '<div class="no-data">No data available.</div>';
+    return;
+  }
+  const keys = Object.keys(data[0]);
+  let html = '<table class="data-table"><thead><tr>';
+  keys.forEach(k => { html += `<th>${escapeHtml(k)}</th>`; });
+  html += '</tr></thead><tbody>';
+  data.forEach(row => {
+    html += '<tr>';
+    keys.forEach(k => { html += `<td>${escapeHtml(String(row[k] ?? ''))}</td>`; });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('data-table-container').innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────
+// FETCH DATA — via server proxy to avoid CORS
+// ─────────────────────────────────────────────────
+async function fetchData(metric, period) {
+  const url = document.getElementById('data-url').value.trim();
+  let rawData = null;
+  try {
+    dataApi = API_BASE_URL + '/api/get_data'
+    const resp = await fetch(dataApi, {
+      method: 'GET'
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    rawData = await resp.json();
+  } catch (e) {
+    console.warn('Could not fetch via proxy, using built-in sample data. Error:', e.message);
+    rawData = SAMPLE_DATA;
+  }
+
+  // Filter by metric if not "all"
+  if (metric !== 'all' && rawData.length > 0) {
+    const keys = Object.keys(rawData[0]);
+    const filtered = rawData.map(row => {
+      const obj = {};
+      keys.forEach(k => {
+        if (k.toLowerCase().includes('month') || k.toLowerCase().includes('date') ||
+            k.toLowerCase().includes('label') || k.toLowerCase().includes('period') ||
+            k.toLowerCase() === metric.toLowerCase() ||
+            k.toLowerCase().includes(metric.toLowerCase())) {
+          obj[k] = row[k];
+        }
+      });
+      return obj;
+    });
+    // Only use filtered if we got meaningful columns
+    if (Object.keys(filtered[0]).length > 1) rawData = filtered;
+  }
+
+  return rawData;
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line => {
+    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g,''));
+    const obj = {};
+    headers.forEach((h, i) => {
+      const v = vals[i];
+      obj[h] = isNaN(v) ? v : Number(v);
+    });
+    return obj;
+  });
+}
+
+// ─────────────────────────────────────────────────
+// CLAUDE API CALL
+// ─────────────────────────────────────────────────
+async function callClaude(body) {
+  messageApi = API_BASE_URL + '/api/process_message'
+  const resp = await fetch(messageApi, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error?.message || 'API error ' + resp.status);
+  }
+  return resp.json();
+}
+
+// ─────────────────────────────────────────────────
+// RENDER CHART
+// ─────────────────────────────────────────────────
+const CHART_COLORS = [
+  'rgba(139,94,60,0.85)',   // accent brown
+  'rgba(74,124,89,0.85)',   // accent green
+  'rgba(92,122,139,0.85)',  // accent blue
+  'rgba(212,160,23,0.85)',  // yellow
+  'rgba(192,57,43,0.85)',   // red
+];
+const CHART_BORDERS = [
+  'rgba(139,94,60,1)',
+  'rgba(74,124,89,1)',
+  'rgba(92,122,139,1)',
+  'rgba(212,160,23,1)',
+  'rgba(192,57,43,1)',
+];
+
+function renderChart(chartType, labelField, valueFields, title, data) {
+  if (currentChart) { currentChart.destroy(); currentChart = null; }
+
+  document.getElementById('chart-placeholder').style.display = 'none';
+  document.getElementById('chart-error').style.display = 'none';
+  const container = document.getElementById('chart-container');
+  container.style.display = 'block';
+  document.getElementById('chart-title').textContent = title;
+
+  // Rebuild canvas (Chart.js needs a fresh canvas after destroy)
+  const wrapper = document.getElementById('chart-container');
+  const oldCanvas = document.getElementById('myChart');
+  const newCanvas = document.createElement('canvas');
+  newCanvas.id = 'myChart';
+  wrapper.replaceChild(newCanvas, oldCanvas);
+
+  const labels = data.map(row => row[labelField] ?? '?');
+  const isPie = chartType === 'pie' || chartType === 'doughnut';
+
+  let datasets;
+  if (isPie) {
+    // For pie/doughnut, combine values from valueFields
+    const field = valueFields[0];
+    datasets = [{
+      data: data.map(row => Number(row[field]) || 0),
+      backgroundColor: CHART_COLORS,
+      borderColor: CHART_BORDERS,
+      borderWidth: 1
+    }];
+  } else {
+    datasets = valueFields.map((field, i) => ({
+      label: field.charAt(0).toUpperCase() + field.slice(1),
+      data: data.map(row => Number(row[field]) || 0),
+      backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+      borderColor: CHART_BORDERS[i % CHART_BORDERS.length],
+      borderWidth: 2,
+      tension: 0.3,
+      fill: false,
+      pointRadius: chartType === 'line' ? 5 : 0
+    }));
+  }
+
+  currentChart = new Chart(newCanvas, {
+    type: chartType,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: datasets.length > 1 || isPie, position: 'bottom' },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: isPie ? {} : {
+        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.06)' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────
+// MAIN AGENT LOOP
+// ─────────────────────────────────────────────────
+async function runAgent() {
+  const query = document.getElementById('user-query').value.trim();
+  if (!query) { alert('Please enter a question first.'); return; }
+
+  const btn = document.getElementById('run-btn');
+  const label = document.getElementById('btn-label');
+  btn.disabled = true;
+  label.innerHTML = '<div class="spinner"></div> Agent running…';
+
+  resetSteps();
+  lastToolCallLog = {};
+  document.getElementById('json-display').textContent = '// Running agent…';
+  document.getElementById('chart-placeholder').style.display = 'flex';
+  document.getElementById('chart-container').style.display = 'none';
+  document.getElementById('chart-error').style.display = 'none';
+  renderDataTable(null);
+
+  try {
+    // ── STEP 1: Send query + tools to Claude ────────────────────
+    setStep(1, 'active', 'Sending query to Claude with tool definitions…');
+
+    const call1Body = {
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 500,
+      system: `You are a data analyst agent. You have tools available to fetch data and render charts.
+IMPORTANT: You MUST use the get_data tool to fetch data. Never invent or fabricate data.
+Never respond with tables, markdown, or text answers — only tool calls.
+Always call get_data first, then render_chart.
+Be precise in extracting the metric (revenue/expenses/units/all) and chart type (bar/line/pie/doughnut) from the user's request.
+If the user doesn't specify a chart type, default to bar.
+If the user doesn't specify a metric, use 'all'.`,
+      tools: TOOLS,
+      messages: [{ role: "user", content: query }],
+      nomen: 'abc'
+    };
+
+    const resp1 = await callClaude(call1Body);
+    lastToolCallLog.step1_request = { model: call1Body.model, tools: TOOLS.map(t=>t.name), user_message: query };
+    lastToolCallLog.step1_response = resp1;
+
+    // Find tool_use block
+    const toolUseBlock = (resp1.content || []).find(b => b.type === 'tool_use');
+    if (!toolUseBlock) {
+      // Claude replied in text — no tool call
+      const text = (resp1.content || []).find(b => b.type === 'text')?.text || '(no response)';
+      setStep(1, 'done', 'Claude responded without a tool call');
+      showChartError("Claude didn't call a tool. Response: " + text);
+      document.getElementById('json-display').innerHTML = syntaxHighlight(JSON.stringify(lastToolCallLog, null, 2));
+      return;
+    }
+
+    if (toolUseBlock.name === 'get_data') {
+      const metric = toolUseBlock.input.metric;
+      const period = toolUseBlock.input.period;
+      setStep(1, 'done', `Claude called get_data(metric="${metric}", period="${period}")`);
+
+      // ── STEP 2: Execute get_data ───────────────────────────────
+      setStep(2, 'active', `Fetching "${metric}" data from your endpoint…`);
+      const data = await fetchData(metric, period);
+      lastFetchedData = data;
+      lastToolCallLog.step2_data_fetched = { rows: data.length, sample: data.slice(0, 2) };
+      renderDataTable(data);
+      setStep(2, 'done', `Got ${data.length} rows. Fields: ${Object.keys(data[0] || {}).join(', ')}`);
+
+      // ── STEP 3: Send data back, ask Claude to call render_chart ─
+      setStep(3, 'active', 'Sending data back to Claude to decide chart mapping…');
+
+      const toolResultMessage = {
+        role: "user",
+        content: [{
+          type: "tool_result",
+          tool_use_id: toolUseBlock.id,
+          content: JSON.stringify({ data, fields: Object.keys(data[0] || {}), row_count: data.length })
+        }]
+      };
+
+      const call2Body = {
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 500,
+        system: call1Body.system,
+        tools: TOOLS,
+        messages: [
+          { role: "user", content: query },
+          { role: "assistant", content: resp1.content },
+          toolResultMessage
+        ],
+        nomen: 'abc'
+      };
+
+      const resp2 = await callClaude(call2Body);
+      lastToolCallLog.step3_request = { continued_conversation: true, data_returned_rows: data.length };
+      lastToolCallLog.step3_response = resp2;
+
+      const renderBlock = (resp2.content || []).find(b => b.type === 'tool_use' && b.name === 'render_chart');
+
+      if (!renderBlock) {
+        const textFallback = (resp2.content || []).find(b => b.type === 'text')?.text || 'No chart spec returned.';
+        setStep(3, 'done', 'Claude did not call render_chart');
+        showChartError("Claude didn't return a chart spec. Response: " + textFallback);
+        document.getElementById('json-display').innerHTML = syntaxHighlight(JSON.stringify(lastToolCallLog, null, 2));
+        return;
+      }
+
+      const { chart_type, label_field, value_fields, title } = renderBlock.input;
+      setStep(3, 'done', `Chart: ${chart_type} | X: ${label_field} | Series: ${value_fields.join(', ')}`);
+
+      // ── STEP 4: Render with Chart.js ───────────────────────────
+      setStep(4, 'active', 'Rendering chart with Chart.js…');
+      lastToolCallLog.step4_render = renderBlock.input;
+
+      try {
+        renderChart(chart_type, label_field, value_fields, title, data);
+        setStep(4, 'done', `✓ ${chart_type} chart rendered — "${title}"`);
+      } catch (chartErr) {
+        setStep(4, 'done', 'Chart render failed');
+        showChartError('Chart render error: ' + chartErr.message);
+      }
+
+    } else if (toolUseBlock.name === 'render_chart') {
+      // Claude skipped get_data and went straight to render_chart — unlikely but handle it
+      setStep(1, 'done', `Claude called render_chart directly`);
+      setStep(2, 'done', 'Skipped (no data fetch needed)');
+      setStep(3, 'active', 'Processing render_chart parameters…');
+      if (lastFetchedData) {
+        const { chart_type, label_field, value_fields, title } = toolUseBlock.input;
+        setStep(3, 'done', `Chart: ${chart_type}`);
+        setStep(4, 'active', 'Rendering…');
+        renderChart(chart_type, label_field, value_fields, title, lastFetchedData);
+        setStep(4, 'done', 'Chart rendered');
+      } else {
+        setStep(3, 'done', 'No data available');
+        showChartError('Claude tried to render a chart but no data has been fetched. Please try asking for a specific metric first.');
+      }
+    }
+
+    document.getElementById('json-display').innerHTML = syntaxHighlight(JSON.stringify(lastToolCallLog, null, 2));
+
+  } catch (e) {
+    showChartError(e.message);
+    document.getElementById('json-display').innerHTML = syntaxHighlight(JSON.stringify({ error: e.message }, null, 2));
+  } finally {
+    btn.disabled = false;
+    label.textContent = '▶ Run Agent';
+  }
+}
+</script>
+</body>
+</html>

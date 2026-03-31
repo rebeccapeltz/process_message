@@ -26,6 +26,8 @@ export default function Home() {
         className={`${styles.page} ${geistSans.variable} ${geistMono.variable}`}
       >
         <main className={styles.main}>
+                          
+
           <Image
             className={styles.logo}
             src="/next.svg"
@@ -34,6 +36,10 @@ export default function Home() {
             height={20}
             priority
           />
+          <div>
+           <div><a href="./demo.html" target="_blank">Demo App</a></div>
+
+          </div>
          
         </main>
       </div>
