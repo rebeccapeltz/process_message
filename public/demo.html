@@ -158,10 +158,18 @@
       <p class="help-text">API key is stored securely in <code>.env</code> on the server — not in the browser.</p>
     </div>
 
+     <div class="section">
+      <div class="section-label"><span class="num">2</span> Auth Key</div>
+      <input class="auth-key-field" type="text" id="auth-key"
+        value=""
+        placeholder="">
+      <p class="help-text">A string representing application authentication key.<br>
+    </div>
+
     <div class="section">
       <div class="section-label"><span class="num">2</span> Data Source (URL)</div>
       <input class="data-url-field" type="text" id="data-url"
-        value="https://raw.githubusercontent.com/beckypeltz/sample-data/main/sales.json"
+        value="https://process-message.vercel.app/api/get_data"
         placeholder="https://your-server.com/data.json">
       <p class="help-text">A public JSON or CSV endpoint. The agent will fetch this when it needs data.<br>
       <strong>Demo fallback:</strong> If unreachable, built-in sample data is used.</p>
@@ -668,7 +676,12 @@ async function runAgent() {
   document.getElementById('chart-error').style.display = 'none';
   renderDataTable(null);
 
+  // Extract NOMEN
+  const authKey = document.getElementById('auth-key').value.trim();
+
+  
   try {
+  
     // ── STEP 1: Send query + tools to Claude ────────────────────
     setStep(1, 'active', 'Sending query to Claude with tool definitions…');
 
@@ -684,7 +697,7 @@ If the user doesn't specify a chart type, default to bar.
 If the user doesn't specify a metric, use 'all'.`,
       tools: TOOLS,
       messages: [{ role: "user", content: query }],
-      nomen: 'abc'
+      nomen: authKey
     };
 
     const resp1 = await callClaude(call1Body);
@@ -737,7 +750,7 @@ If the user doesn't specify a metric, use 'all'.`,
           { role: "assistant", content: resp1.content },
           toolResultMessage
         ],
-        nomen: 'abc'
+        nomen: authKey
       };
 
       const resp2 = await callClaude(call2Body);
