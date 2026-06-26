@@ -19,6 +19,7 @@ export default async function handler(req, res) {
       const apiKey = process.env.API_KEY;
 
       // console.log(msgBody);
+      console.log("test:",msgBody.nomen)
       if (msgBody.nomen !== process.env.NOMEN) {
         return res.status(404).json({ error: "Not authorized" });
       }
