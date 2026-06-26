@@ -515,7 +515,8 @@ async function fetchData(metric, period) {
   const url = document.getElementById('data-url').value.trim();
   let rawData = null;
   try {
-    dataApi = API_BASE_URL + '/api/get_data'
+    print(API_BASE_URL + '/api/process_message')
+    dataApi = API_BASE_URL + '/api/process_message'
     const resp = await fetch(dataApi, {
       method: 'GET'
     });

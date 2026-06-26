@@ -3,6 +3,15 @@ Process incoming request and return to caller
 */
 
 export default async function handler(req, res) {
+  // Set CORS headers on EVERY response, unconditionally, before any branching
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle the browser's preflight request and exit immediately
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
   if (req.method === 'POST') {
     try {
@@ -27,18 +36,13 @@ export default async function handler(req, res) {
 
       const data = await resp.json();
 
-
       if (!resp.ok) {
         console.error('Anthropic API error:', resp.status, resp.statusText);
         console.error('Error details:', data);
         return res.status(resp.status).json({ error: data });
       }
-      // Now return the parsed data
-      // return res.status(200).json(data);
-      return res.status(200)
-          .setHeader("Access-Control-Allow-Origin", "*")
-          .json(data);
 
+      return res.status(200).json(data);
 
     } catch (error) {
       console.error('Error accessing RESPONSE:', error);
@@ -48,4 +52,3 @@ export default async function handler(req, res) {
     res.status(200).json({ msg: "use POST method" });
   }
 }
-
