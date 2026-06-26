@@ -24,6 +24,13 @@ export default async function handler(req, res) {
       }
       delete msgBody.nomen; // Remove nomen from the body before sending to Anthropic
 
+      // Fallback only — callers should normally send their own `model`.
+      // Lets you bump the default for every caller via a Vercel env var,
+      // without redeploying demo.html, if a model gets retired again.
+      if (!msgBody.model) {
+        msgBody.model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
+      }
+
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
