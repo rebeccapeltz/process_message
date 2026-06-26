@@ -686,7 +686,7 @@ async function runAgent() {
     setStep(1, 'active', 'Sending query to Claude with tool definitions…');
 
     const call1Body = {
-      model: "claude-sonnet-4-20250514",
+      model: "claude-opus-4-8",
       max_tokens: 500,
       system: `You are a data analyst agent. You have tools available to fetch data and render charts.
 IMPORTANT: You MUST use the get_data tool to fetch data. Never invent or fabricate data.
