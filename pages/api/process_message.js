@@ -34,7 +34,10 @@ export default async function handler(req, res) {
         return res.status(resp.status).json({ error: data });
       }
       // Now return the parsed data
-      return res.status(200).json(data);
+      // return res.status(200).json(data);
+      return res.status(200)
+          .setHeader("Access-Control-Allow-Origin", "*")
+          .json(data);
 
 
     } catch (error) {
