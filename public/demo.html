@@ -686,8 +686,16 @@ async function runAgent() {
     // ── STEP 1: Send query + tools to Claude ────────────────────
     setStep(1, 'active', 'Sending query to Claude with tool definitions…');
 
+// SETUP POST BODY TO CLAUDE
+// {
+//   "model": "claude-sonnet-4-6",
+//   "max_tokens": 500,
+//   "system": "You are a friendly conversationalist.",
+//   "messages": [{ "role": "user", "content": "hello" }]
+// }
+
     const call1Body = {
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 500,
       system: `You are a data analyst agent. You have tools available to fetch data and render charts.
 IMPORTANT: You MUST use the get_data tool to fetch data. Never invent or fabricate data.
@@ -702,6 +710,8 @@ If the user doesn't specify a metric, use 'all'.`,
     };
 
     const resp1 = await callClaude(call1Body);
+
+    
     lastToolCallLog.step1_request = { model: call1Body.model, tools: TOOLS.map(t=>t.name), user_message: query };
     lastToolCallLog.step1_response = resp1;
 
