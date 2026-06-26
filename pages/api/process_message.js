@@ -19,10 +19,9 @@ export default async function handler(req, res) {
       const apiKey = process.env.API_KEY;
 
       // console.log(msgBody);
-      console.log("test:",msgBody.nomen)
-      // if (msgBody.nomen !== process.env.NOMEN) {
-      //   return res.status(404).json({ error: "Not authorized" });
-      // }
+      if (msgBody.nomen !== process.env.NOMEN) {
+        return res.status(404).json({ error: "Not authorized" });
+      }
       delete msgBody.nomen; // Remove nomen from the body before sending to Anthropic
 
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
