@@ -169,8 +169,8 @@
     <div class="section">
       <div class="section-label"><span class="num">2</span> Data Source (URL)</div>
       <input class="data-url-field" type="text" id="data-url"
-        value="https://process-message.vercel.app/api/process_data"
-        placeholder="https://your-server.com/data.json">
+        value="https://process-message.vercel.app/api/get_data"
+        placeholder="https://your-server.com/api/get_data">
       <p class="help-text">A public JSON or CSV endpoint. The agent will fetch this when it needs data.<br>
       <strong>Demo fallback:</strong> If unreachable, built-in sample data is used.</p>
     </div>
@@ -515,8 +515,8 @@ async function fetchData(metric, period) {
   const url = document.getElementById('data-url').value.trim();
   let rawData = null;
   try {
-    print(API_BASE_URL + '/api/process_message')
-    dataApi = API_BASE_URL + '/api/process_message'
+    // print(API_BASE_URL + '/api/get_data')
+    dataApi = API_BASE_URL + '/api/get_data'
     const resp = await fetch(dataApi, {
       method: 'GET'
     });
